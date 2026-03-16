@@ -1,0 +1,28 @@
+# 食迹项目开发规则
+
+## 通用规则
+- 所有新增功能必须先参考 openspec/specs 与 openspec/changes
+- 没有 spec 的功能，不允许直接进入实现
+- 优先输出最小可运行版本，避免过度设计
+- 所有代码都要包含必要注释，尤其是 AI 接口、状态管理、边界判断
+- 修改代码时不要破坏现有目录结构
+- 一切文档使用中文生成
+
+## Flutter 规则
+- 采用 feature-first 目录组织
+- 状态管理优先使用 Riverpod（或你后续指定的方案）
+- UI 组件尽量可复用
+- 所有接口请求统一走 api client
+- 不允许在 Flutter 客户端保存 Gemini 正式 API key
+
+## Spring Boot 规则
+- Controller 只做参数接收与返回
+- 业务逻辑放在 Service
+- 外部 AI 调用统一封装到 ai 模块
+- DTO、Entity、VO 明确分层
+- 所有接口都返回统一响应结构
+
+## 文档规则
+- 新功能必须同步更新 openspec/changes
+- 接口变更必须同步更新 docs/api
+- 关键架构决策必须记录在 docs/architecture
