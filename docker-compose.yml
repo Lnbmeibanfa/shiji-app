@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: shiji-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: shiji
+      MYSQL_USER: shiji
+      MYSQL_PASSWORD: shiji123456
+    ports:
+      - "3307:3306"
+    volumes:
+      - shiji_mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+
+  redis:
+    image: redis:7
+    container_name: shiji-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - shiji_redis_data:/data
+
+volumes:
+  shiji_mysql_data:
+  shiji_redis_data:
