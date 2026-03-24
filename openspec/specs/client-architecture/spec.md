@@ -39,6 +39,23 @@ Flutter 项目必须采用 feature-first 结构。
 
 ---
 
+## 需求：界面实现须遵守 Design Token 规范
+
+Flutter 界面实现 MUST 遵守 `openspec/specs/design-tokens/spec.md` 中的 Design Token v1：颜色、圆角、间距、阴影、排版层级与已定组件视觉规则 MUST 通过规范定义的 Token 或等价主题 API（如 `AppColors`、`AppSpacing`、`AppRadius`、`AppTypography`）引用，MUST NOT 在业务组件中随意硬编码十六进制色值或未文档化的尺寸。
+
+### 场景：新增页面与组件
+
+- 当开发者在 `features/` 下新增页面或通用组件
+- 必须使用 Token 规范中的颜色与间距圆角
+- 不得仅在 Widget 内新增未收敛的 `Color(0xFF...)`
+
+### 场景：AI 生成代码
+
+- 当使用 AI 生成 Flutter UI 代码
+- 生成结果必须符合 `design-tokens` 规范中的约束（仅用 Token 常量、禁止在组件内随意写死色值与圆角间距）
+
+---
+
 这一条会避免一个大坑：
 
 Flutter 直接调用 Gemini API。

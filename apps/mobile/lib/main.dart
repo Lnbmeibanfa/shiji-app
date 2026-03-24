@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'core/theme/shiji_theme.dart';
+
 /// 食迹移动端应用入口
 void main() {
   runApp(const ShijiApp());
@@ -13,10 +15,7 @@ class ShijiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '食迹',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
+      theme: buildShijiTheme(),
       home: const _AppPlaceholderPage(),
     );
   }

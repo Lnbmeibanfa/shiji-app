@@ -36,6 +36,13 @@
   - Cursor 辅助协作
   - 测试驱动开发（TDD）
 
+### Design Token（移动端视觉规范）
+
+- **OpenSpec 规范**：[openspec/specs/design-tokens/spec.md](./openspec/specs/design-tokens/spec.md)（颜色、圆角、间距、组件视觉与 AI 约束）
+- **Flutter 实现**：`apps/mobile/lib/core/theme/`（`AppColors`、`AppSpacing`、`AppRadius`、`AppTypography`、`AppShadows`、`AppSizes`）、`buildShijiTheme()` 在 `shiji_theme.dart`
+- **通用组件**：`apps/mobile/lib/core/widgets/`（导出见 `shiji_widgets.dart`）
+- **补充说明**：[docs/design-tokens.md](./docs/design-tokens.md)
+
 ## 仓库目录结构说明
 
 项目采用多应用单仓库结构（mono-repo），顶层目录如下：
@@ -152,11 +159,14 @@
 
 ## 本地开发启动方式
 
+> **后端（MySQL / Redis / Spring Boot）的完整说明见：[docs/backend-local-development.md](./docs/backend-local-development.md)**  
+> 下文为快速索引；细节以该文档为准。
+
 ### 前置条件
 
 - Flutter SDK（版本以 `apps/mobile/pubspec.yaml` 为准）
 - JDK 17（或以 `services/api/pom.xml` 为准）
-- MySQL 与 Redis 实例（本地或容器均可）
+- Docker 与 Docker Compose（推荐：用仓库根目录 `docker compose up -d` 启动 MySQL 与 Redis）
 - Maven 或使用项目自带的 `mvnw`
 
 ### 启动 Flutter 移动端
@@ -169,9 +179,11 @@ flutter run
 
 当前 `main.dart` 仅提供占位页面，后续实际页面会从 `features/` 模块接入。
 
-### 启动 Spring Boot 后端
+### 启动 Spring Boot 后端（快速步骤）
 
-确保本地 MySQL 与 Redis 可用，并在 `services/api/src/main/resources/application.properties` 中配置好连接信息：
+1. 仓库根目录执行：`docker compose up -d`（MySQL 映射 **3307→3306**，Redis **6379**）。
+2. 连接信息已写在 `services/api/src/main/resources/application.yml`（库名 `shiji`，用户 `shiji` / 密码见该文档）。
+3. 启动 API：
 
 ```bash
 cd services/api
@@ -179,6 +191,8 @@ cd services/api
 ```
 
 应用入口类为 `com.shiji.api.ShijiApiApplication`，实际业务接口会在 `modules/*` 下逐步实现。
+
+**Windows** 可使用 `services\api\mvnw.cmd spring-boot:run`。更多排查命令与连接表见 [docs/backend-local-development.md](./docs/backend-local-development.md)。
 
 ### 运行测试
 
