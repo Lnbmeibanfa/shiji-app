@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -54,13 +55,17 @@ public class SecurityConfiguration {
         http.csrf(csrf -> csrf.disable());
         http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.authorizeHttpRequests(auth -> auth
+                // 浏览器跨域预检：与 http.cors() 配合，避免 OPTIONS 被鉴权拦截导致「看似 CORS 失败」
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Spring Boot 错误分发，避免未登录访问被 401 掩盖真实错误页
+                .requestMatchers("/error").permitAll()
+                // 匿名即可调用的认证相关接口（其余请求默认需登录）
                 .requestMatchers(
                         "/api/auth/sms/send",
                         "/api/auth/login/sms",
                         "/api/auth/session/restore"
                 ).permitAll()
-                .requestMatchers("/api/auth/logout/**").authenticated()
-                .anyRequest().permitAll());
+                .anyRequest().authenticated());
         http.addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         http.exceptionHandling(ex -> ex.authenticationEntryPoint(jsonUnauthorizedEntryPoint()));
         return http.build();
