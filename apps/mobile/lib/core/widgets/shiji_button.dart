@@ -11,12 +11,16 @@ class ShijiButton extends StatelessWidget {
     super.key,
     required this.label,
     this.onPressed,
+    this.isLoading = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
 
-  bool get _enabled => onPressed != null;
+  /// 为 true 时展示 loading 并禁止点击（用于登录等提交）。
+  final bool isLoading;
+
+  bool get _enabled => onPressed != null && !isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +35,22 @@ class ShijiButton extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: InkWell(
-          onTap: onPressed,
+          onTap: _enabled ? onPressed : null,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Center(
-            child: Text(
-              label,
-              style: AppTypography.buttonText(color: fg),
-            ),
+            child: isLoading
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: fg,
+                    ),
+                  )
+                : Text(
+                    label,
+                    style: AppTypography.buttonText(color: fg),
+                  ),
           ),
         ),
       ),

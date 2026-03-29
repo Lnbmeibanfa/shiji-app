@@ -1,0 +1,26 @@
+# 食迹移动端：静态分析与单元测试（P2 基础设施）
+name: flutter-mobile
+
+on:
+  push:
+    paths:
+      - 'apps/mobile/**'
+      - '.github/workflows/flutter-mobile.yml'
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test

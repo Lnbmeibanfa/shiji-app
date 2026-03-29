@@ -50,6 +50,29 @@ void main() {
       );
       expect(material.color, AppColors.buttonDisabledBackground);
     });
+
+    testWidgets('loading 态：展示进度指示且不可点', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: ShijiButton(
+              label: '登录',
+              onPressed: _noop,
+              isLoading: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      final inkWell = tester.widget<InkWell>(
+        find.descendant(
+          of: find.byType(ShijiButton),
+          matching: find.byType(InkWell),
+        ).first,
+      );
+      expect(inkWell.onTap, isNull);
+    });
   });
 }
 
