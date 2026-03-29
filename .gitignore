@@ -1,1 +1,7 @@
 .claude/
+
+# --- 构建产物（全仓库）---
+**/target/
+**/dist/
+**/out/
+*.class
