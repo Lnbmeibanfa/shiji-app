@@ -1,0 +1,20 @@
+CREATE TABLE `user` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_no` VARCHAR(32) NOT NULL COMMENT '用户业务编号，给外部展示或埋点使用',
+  `nickname` VARCHAR(64) DEFAULT NULL COMMENT '昵称',
+  `avatar_url` VARCHAR(255) DEFAULT NULL COMMENT '头像URL',
+  `gender` TINYINT DEFAULT 0 COMMENT '性别：0未知 1男 2女',
+  `birthday` DATE DEFAULT NULL COMMENT '生日',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '用户状态：1正常 2冻结 3已注销',
+  `register_source` VARCHAR(32) DEFAULT 'mobile_sms' COMMENT '注册来源：mobile_sms/apple/email_magic_link等',
+  `last_login_at` DATETIME DEFAULT NULL COMMENT '最后登录时间',
+  `last_login_ip` VARCHAR(64) DEFAULT NULL COMMENT '最后登录IP',
+  `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
+  `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0否 1是',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_no` (`user_no`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户主体表';

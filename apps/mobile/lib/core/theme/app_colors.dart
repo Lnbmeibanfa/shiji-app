@@ -47,4 +47,21 @@ abstract final class AppColors {
 
   /// 拍照主卡 icon 圆底：白 20%（规范 rgba(255,255,255,0.2)）。
   static const Color captureCardIconBackdrop = Color(0x33FFFFFF);
+
+  // --- 反馈表面（Toast / Banner / 确认弹窗主按钮），见 openspec client-feedback ---
+
+  /// Toast 成功、确认 Dialog 主操作按钮背景。
+  static const Color feedbackToastSuccess = Color(0xFF95AB99);
+
+  /// Toast 失败（温和暖调，非刺红）。
+  static const Color feedbackToastFailure = Color(0xFFE99B76);
+
+  /// Toast 提示：浅底（可与毛玻璃叠加）。
+  static const Color feedbackToastHintFrosted = Color(0xFFFAFAF9);
+
+  /// Toast 提示：暖色实底。
+  static const Color feedbackToastHintWarm = Color(0xFFE9BC9C);
+
+  /// 顶区公告 Banner 背景。
+  static const Color feedbackBannerBackground = Color(0xFFFFF4E6);
 }

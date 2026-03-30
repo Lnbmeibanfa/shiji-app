@@ -48,6 +48,33 @@
 - **WHEN** 表示成功、警告、AI 暖色块、轻风险或标签
 - **THEN** MUST 仅使用规范已定：`success`、`warning`、`accentWarm`、`accentWarmInner`、`dangerSoft` 及 `tagGreen*`、`tagOrange*`、`tagYellow*`、`tagNeutral*`
 
+#### Scenario: 反馈表面
+
+- **WHEN** 实现 Toast、Banner 或 `client-feedback` 规范中的确认 Dialog
+- **THEN** 背景与主操作色 MUST 使用 `feedbackToastSuccess`、`feedbackToastFailure`、`feedbackToastHintFrosted`、`feedbackToastHintWarm`、`feedbackBannerBackground` 等反馈 Token，MUST NOT 在组件内另写与定稿不一致的 hex
+
+---
+
+### Requirement: 反馈表面专用颜色 Token
+
+系统 MUST 在颜色 Token 表中增加 **反馈表面** 语义色，供 Toast、Banner、确认 Dialog 主按钮等使用，与现有 `success` / `warning` 等并存；数值 MUST 与下列十六进制一致（实现写在 `AppColors` 内，业务仅引用 Token 名）。
+
+- `feedbackToastSuccess`：`#95AB99`（成功 Toast 与 Dialog 主确认按钮背景）
+- `feedbackToastFailure`：`#E99B76`（失败 Toast，温和暖调，非刺红）
+- `feedbackToastHintFrosted`：浅底 `#FAFAF9`，配合毛玻璃/半透明效果（具体 alpha 由实现与主题决定，但实色部分 MUST 对应该 Token）
+- `feedbackToastHintWarm`：`#E9BC9C`（暖色实底提示）
+- `feedbackBannerBackground`：`#FFF4E6`（公告 Banner 背景）
+
+#### Scenario: Flutter 引用
+
+- **WHEN** 开发者实现 `client-feedback` 规范中的 Toast、Banner 或 Dialog
+- **THEN** 背景与按钮色 MUST 使用上述 Token 名之一，MUST NOT 在组件内写死与上表冲突的 hex
+
+#### Scenario: 速查表一致
+
+- **WHEN** 更新主规范中的颜色速查表
+- **THEN** MUST 包含本要求中列出的反馈 Token 与 hex
+
 ---
 
 ### Requirement: 字体层级 Token
@@ -184,6 +211,7 @@
 **文本：** textPrimary `#2F2A24`， textSecondary `#6F685F`， textTertiary `#A19A90`， textInverse `#FFFFFF`  
 **线：** borderLight `#E6E9E3`， divider `#ECEFE9`  
 **功能：** success `#8DAA8C`， warning `#E2B48F`， accentWarm `#F3E3CC`， accentWarmInner `#FBF4EA`， dangerSoft `#D9A8A0`  
-**标签：** tagGreenBg `#EEF5EE` / tagGreenText `#7B9A7B`； tagOrangeBg `#FBF0E5` / tagOrangeText `#D49A6A`； tagYellowBg `#F8F3E3` / tagYellowText `#B89B4D`； tagNeutralBg `#F1F2EF` / tagNeutralText `#7A746C`
+**标签：** tagGreenBg `#EEF5EE` / tagGreenText `#7B9A7B`； tagOrangeBg `#FBF0E5` / tagOrangeText `#D49A6A`； tagYellowBg `#F8F3E3` / tagYellowText `#B89B4D`； tagNeutralBg `#F1F2EF` / tagNeutralText `#7A746C`  
+**反馈表面：** feedbackToastSuccess `#95AB99`； feedbackToastFailure `#E99B76`； feedbackToastHintFrosted 浅底 `#FAFAF9`（毛玻璃/半透明由实现叠加）； feedbackToastHintWarm `#E9BC9C`； feedbackBannerBackground `#FFF4E6`
 
 **Flutter 参考实现：** `apps/mobile/lib/core/theme/`（`AppColors`、`AppSpacing`、`AppRadius`、`AppTypography`、`AppShadows`、`AppSizes`）。

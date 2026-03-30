@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// 统一 SnackBar，样式走 Theme，不引入硬编码色值。
+import 'app_feedback.dart';
+
+/// 旧版 SnackBar 入口；已委托 [AppFeedback] Overlay Toast。
+@Deprecated('Use AppFeedback.showToast with FeedbackToastKind')
 abstract final class AppSnackBar {
   static void showMessage(BuildContext context, String message) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) {
-      return;
-    }
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(content: Text(message)),
+    AppFeedback.showToast(
+      context,
+      kind: FeedbackToastKind.hintFrosted,
+      title: message,
     );
   }
 
   static void showError(BuildContext context, String message) {
-    showMessage(context, message);
+    AppFeedback.showToast(
+      context,
+      kind: FeedbackToastKind.failure,
+      title: message,
+    );
   }
 }

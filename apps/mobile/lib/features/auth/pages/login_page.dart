@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_assets.dart';
-import '../../../core/feedback/app_snackbar.dart';
+import '../../../core/feedback/app_feedback.dart';
 import '../../../core/network/api_exceptions.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_colors.dart';
@@ -59,14 +59,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!mounted) {
       return;
     }
-    AppSnackBar.showMessage(context, '《用户协议》正文待接入');
+    AppFeedback.showToast(
+      context,
+      kind: FeedbackToastKind.hintFrosted,
+      title: '《用户协议》',
+      subtitle: '正文待接入',
+    );
   }
 
   void _onPrivacyPolicyLinkTap() {
     if (!mounted) {
       return;
     }
-    AppSnackBar.showMessage(context, '《隐私政策》正文待接入');
+    AppFeedback.showToast(
+      context,
+      kind: FeedbackToastKind.hintFrosted,
+      title: '《隐私政策》',
+      subtitle: '正文待接入',
+    );
   }
 
   InputDecoration _fieldDecoration(String hint) {
@@ -110,7 +120,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _onRequestCode() async {
     if (!_phoneOk) {
-      AppSnackBar.showError(context, '请输入正确的 11 位手机号');
+      AppFeedback.showToast(
+        context,
+        kind: FeedbackToastKind.failure,
+        title: '手机号格式有误',
+        subtitle: '请输入正确的 11 位手机号',
+      );
       return;
     }
     setState(() => _sendingCode = true);
@@ -122,10 +137,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         return;
       }
       _startCountdown(60);
-      AppSnackBar.showMessage(context, '验证码已发送（开发环境请查看后端日志）');
+      AppFeedback.showToast(
+        context,
+        kind: FeedbackToastKind.success,
+        title: '验证码已发送',
+        subtitle: '开发环境请查看后端日志',
+      );
     } catch (e) {
       if (mounted) {
-        AppSnackBar.showError(context, _formatError(e));
+        AppFeedback.showToast(
+          context,
+          kind: FeedbackToastKind.failure,
+          title: '发送失败',
+          subtitle: _formatError(e),
+        );
       }
     } finally {
       if (mounted) {
@@ -153,15 +178,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _onLogin() async {
     if (!_agreed) {
-      AppSnackBar.showError(context, '请先阅读并同意用户协议与隐私政策');
+      AppFeedback.showToast(
+        context,
+        kind: FeedbackToastKind.failure,
+        title: '请先同意协议',
+        subtitle: '阅读并勾选用户协议与隐私政策',
+      );
       return;
     }
     if (!_phoneOk) {
-      AppSnackBar.showError(context, '请输入正确的 11 位手机号');
+      AppFeedback.showToast(
+        context,
+        kind: FeedbackToastKind.failure,
+        title: '手机号格式有误',
+        subtitle: '请输入正确的 11 位手机号',
+      );
       return;
     }
     if (!_codeOk) {
-      AppSnackBar.showError(context, '请输入 4–8 位数字验证码');
+      AppFeedback.showToast(
+        context,
+        kind: FeedbackToastKind.failure,
+        title: '验证码格式有误',
+        subtitle: '请输入 4–8 位数字验证码',
+      );
       return;
     }
     setState(() => _loggingIn = true);
@@ -176,7 +216,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       await ref.read(authControllerProvider).setSessionToken(login.token);
     } catch (e) {
       if (mounted) {
-        AppSnackBar.showError(context, _formatError(e));
+        AppFeedback.showToast(
+          context,
+          kind: FeedbackToastKind.failure,
+          title: '登录失败',
+          subtitle: _formatError(e),
+        );
       }
     } finally {
       if (mounted) {
