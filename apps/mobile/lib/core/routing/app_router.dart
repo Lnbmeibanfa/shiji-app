@@ -3,7 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
 import '../../features/auth/pages/login_page.dart';
-import '../../features/home/pages/home_page_placeholder.dart';
+import '../../features/shell/pages/main_shell_page.dart';
+import '../../features/shell/pages/shell_tab_placeholders.dart';
 import '../../features/splash/pages/splash_page.dart';
 import 'route_paths.dart';
 
@@ -44,9 +45,44 @@ GoRouter createAppRouter(AuthController auth) {
         path: RoutePaths.login,
         builder: (context, state) => const LoginPage(),
       ),
-      GoRoute(
-        path: RoutePaths.home,
-        builder: (context, state) => const HomePagePlaceholder(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return MainShellPage(navigationShell: navigationShell);
+        },
+        branches: <StatefulShellBranch>[
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: RoutePaths.home,
+                builder: (context, state) => const HomeTabPlaceholder(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: RoutePaths.record,
+                builder: (context, state) => const RecordTabPlaceholder(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: RoutePaths.review,
+                builder: (context, state) => const ReviewTabPlaceholder(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: RoutePaths.profile,
+                builder: (context, state) => const ProfileTabPlaceholder(),
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );

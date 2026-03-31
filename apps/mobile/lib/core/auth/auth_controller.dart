@@ -6,6 +6,13 @@ import '../storage/auth_storage.dart';
 class AuthController extends ChangeNotifier {
   AuthController({required AuthStorage storage}) : _storage = storage;
 
+  /// 单测/Widget 测试用：已就绪且视为已登录，不读写安全存储。
+  @visibleForTesting
+  AuthController.authenticatedForTest(AuthStorage storage)
+      : _storage = storage,
+        _token = 'test-token',
+        _ready = true;
+
   final AuthStorage _storage;
 
   String? _token;
