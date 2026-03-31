@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
   datasource:
     url: jdbc:mysql://127.0.0.1:3307/shiji?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
     username: shiji
@@ -10,3 +14,15 @@ spring:
       host: 127.0.0.1
       port: 6379
       timeout: 3000
+
+# 阿里云 OSS（后端代理上传）。密钥请用环境变量注入，勿提交真实值。
+# 本地未配置时可保持 enabled=false，上传接口将返回「对象存储未配置」。
+shiji:
+  oss:
+    enabled: false
+    endpoint: ${OSS_ENDPOINT:https://oss-cn-hangzhou.aliyuncs.com}
+    region: ${OSS_REGION:oss-cn-guangzhou}
+    bucket: ${OSS_BUCKET:}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    max-file-size-bytes: 10485760
