@@ -96,6 +96,27 @@ docker compose down -v
 
 Spring Boot 在 `application.yml` 的 `spring.data.redis` 下已配置上述主机与端口。
 
+### 阿里云 OSS（后端代理上传）
+
+图片上传接口使用阿里云 OSS **PutObject**。默认 `shiji.oss.enabled=false`，未配置时接口返回业务错误「对象存储未配置」。
+
+本地联调真实上传时：
+
+1. 在阿里云创建 Bucket（与 `endpoint` 地域一致），建议使用 RAM 子账号，权限收敛到该 Bucket 的 `oss:PutObject` 等最小集。
+2. 在 shell 或 IDE 环境变量中设置（**勿**把真实密钥写入仓库）：
+
+| 变量 | 说明 |
+|------|------|
+| `OSS_ENDPOINT` | 如 `https://oss-cn-hangzhou.aliyuncs.com` |
+| `OSS_REGION` | 如 `cn-hangzhou` |
+| `OSS_BUCKET` | Bucket 名称 |
+| `OSS_ACCESS_KEY_ID` | RAM 子账号 AccessKey ID |
+| `OSS_ACCESS_KEY_SECRET` | RAM 子账号 AccessKey Secret |
+
+3. 在 `application.yml` 或本地 `application-local.yml` 中设置 `shiji.oss.enabled=true`（或通过 Spring Profile 覆盖）。
+
+若 Bucket 为**私有读**，返回的 `url` 可能无法在浏览器直接打开，需后续改为签名 URL 或绑定 CDN；与 `openspec/changes/api-oss-proxy-upload-v1` 设计一致。
+
 ---
 
 ## 6. Spring Boot 启动方式
