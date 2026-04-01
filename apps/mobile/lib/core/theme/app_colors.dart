@@ -7,6 +7,9 @@ abstract final class AppColors {
   static const Color primarySoft = Color(0xFFDCE7DC);
   static const Color primarySoftest = Color(0xFFEEF4EE);
 
+  /// 底部导航 Tab 选中态（图标、标签、指示底）。
+  static const Color navTabSelected = Color(0xFF8FA693);
+
   static const Color bgPrimary = Color(0xFFF6F7F4);
   static const Color bgCard = Color(0xFFFCFCFA);
   static const Color bgSecondary = Color(0xFFF0F2EE);
