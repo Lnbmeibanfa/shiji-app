@@ -25,5 +25,65 @@ void main() {
       expect(progress.backgroundColor, AppColors.progressTrack);
       expect(progress.color, AppColors.primary);
     });
+
+    testWidgets('摘要模式：未超目标时进度条为主色', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CalorieProgressCard.summary(
+              consumedKcal: 800,
+              remainingKcal: 800,
+              goalKcal: 1600,
+            ),
+          ),
+        ),
+      );
+
+      final progress = tester.widget<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
+      );
+      expect(progress.value, 0.5);
+      expect(progress.color, AppColors.primary);
+    });
+
+    testWidgets('摘要模式：达到目标时满条且为 progressOverBudget 色', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CalorieProgressCard.summary(
+              consumedKcal: 1600,
+              remainingKcal: 0,
+              goalKcal: 1600,
+            ),
+          ),
+        ),
+      );
+
+      final progress = tester.widget<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
+      );
+      expect(progress.value, 1.0);
+      expect(progress.color, AppColors.progressOverBudget);
+    });
+
+    testWidgets('摘要模式：超过目标时仍满条且为红色', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CalorieProgressCard.summary(
+              consumedKcal: 1800,
+              remainingKcal: 0,
+              goalKcal: 1600,
+            ),
+          ),
+        ),
+      );
+
+      final progress = tester.widget<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
+      );
+      expect(progress.value, 1.0);
+      expect(progress.color, AppColors.progressOverBudget);
+    });
   });
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_controller.dart';
 import '../../features/auth/pages/login_page.dart';
 import '../../features/shell/pages/main_shell_page.dart';
+import '../../features/home/pages/home_page.dart';
 import '../../features/shell/pages/shell_tab_placeholders.dart';
 import '../../features/splash/pages/splash_page.dart';
 import 'route_paths.dart';
@@ -54,7 +55,7 @@ GoRouter createAppRouter(AuthController auth) {
             routes: <RouteBase>[
               GoRoute(
                 path: RoutePaths.home,
-                builder: (context, state) => const HomeTabPlaceholder(),
+                builder: (context, state) => const HomePage(),
               ),
             ],
           ),

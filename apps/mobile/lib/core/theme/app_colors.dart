@@ -45,6 +45,9 @@ abstract final class AppColors {
   /// 热量进度条轨道色（规范定稿）。
   static const Color progressTrack = Color(0xFFD9DED6);
 
+  /// 已摄入达到或超过日目标时，进度条前景色（约定 A：满条 + 红色警示）。
+  static const Color progressOverBudget = Color(0xFFC75C5C);
+
   /// AI 建议卡 icon 区背景（规范定稿）。
   static const Color aiInsightIconBackground = Color(0xFFF6E8D7);
 

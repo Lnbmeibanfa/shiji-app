@@ -30,7 +30,16 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('首页占位'), findsOneWidget);
+    expect(find.text('今天也一起轻松吃饭吧'), findsOneWidget);
+    expect(find.text('最近记录'), findsOneWidget);
+
+    await tester.tap(find.text('查看全部'));
+    await tester.pumpAndSettle();
+    expect(find.text('记录占位'), findsOneWidget);
+
+    await tester.tap(find.text('首页'));
+    await tester.pumpAndSettle();
+    expect(find.text('今天也一起轻松吃饭吧'), findsOneWidget);
 
     await tester.tap(find.text('记录'));
     await tester.pumpAndSettle();
