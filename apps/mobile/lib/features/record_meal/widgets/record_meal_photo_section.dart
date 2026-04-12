@@ -18,9 +18,11 @@ class RecordMealPhotoSection extends ConsumerStatefulWidget {
   const RecordMealPhotoSection({
     super.key,
     required this.onUploadedChanged,
+    this.onUploadingChanged,
   });
 
   final ValueChanged<FileUploadResponse?> onUploadedChanged;
+  final ValueChanged<bool>? onUploadingChanged;
 
   @override
   ConsumerState<RecordMealPhotoSection> createState() =>
@@ -54,6 +56,7 @@ class _RecordMealPhotoSectionState extends ConsumerState<RecordMealPhotoSection>
       _uploading = true;
       _uploadFailed = false;
     });
+    widget.onUploadingChanged?.call(true);
     try {
       final res =
           await ref.read(mealPhotoRepositoryProvider).uploadMealPhoto(file);
@@ -84,7 +87,10 @@ class _RecordMealPhotoSectionState extends ConsumerState<RecordMealPhotoSection>
       }
       widget.onUploadedChanged(null);
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) {
+        setState(() => _uploading = false);
+        widget.onUploadingChanged?.call(false);
+      }
     }
   }
 

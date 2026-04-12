@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 
@@ -17,7 +18,7 @@ class EmotionOption {
   final String label;
 }
 
-/// 「此刻的感受」多选 chips。
+/// 「此刻的感受」多选：浅灰胶囊、无描边，与食迹 token 一致（避免 FilterChip 默认白底黑边）。
 class EmotionChipsSection extends StatelessWidget {
   const EmotionChipsSection({
     super.key,
@@ -51,29 +52,62 @@ class EmotionChipsSection extends StatelessWidget {
           runSpacing: AppSpacing.s8,
           children: [
             for (final o in options)
-              FilterChip(
-                label: Text('${o.emoji} ${o.label}'),
+              _EmotionPill(
+                option: o,
                 selected: selectedIds.contains(o.id),
-                onSelected: (selected) {
+                onTap: () {
                   final next = Set<int>.from(selectedIds);
-                  if (selected) {
-                    next.add(o.id);
-                  } else {
+                  if (next.contains(o.id)) {
                     next.remove(o.id);
+                  } else {
+                    next.add(o.id);
                   }
                   onChanged(next);
                 },
-                selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                checkmarkColor: AppColors.primary,
-                labelStyle: AppTypography.labelMedium(
-                  color: selectedIds.contains(o.id)
-                      ? AppColors.primary
-                      : AppColors.textPrimary,
-                ),
               ),
           ],
         ),
       ],
+    );
+  }
+}
+
+class _EmotionPill extends StatelessWidget {
+  const _EmotionPill({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final EmotionOption option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected ? AppColors.primarySoft : AppColors.tagNeutralBg;
+    final fg = selected ? AppColors.primary : AppColors.textPrimary;
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        splashColor: AppColors.primary.withValues(alpha: 0.12),
+        highlightColor: AppColors.primary.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s16,
+            vertical: AppSpacing.s12,
+          ),
+          child: Text(
+            '${option.emoji} ${option.label}',
+            style: AppTypography.labelMedium(color: fg).copyWith(fontSize: 14),
+          ),
+        ),
+      ),
     );
   }
 }

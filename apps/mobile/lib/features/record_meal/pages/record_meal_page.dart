@@ -10,6 +10,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../ai_stub_foods.dart';
+import '../meal_type_time.dart';
 import '../models/draft_food_item.dart';
 import '../widgets/emotion_chips_section.dart';
 import '../widgets/manual_add_food_button.dart';
@@ -19,7 +21,7 @@ import '../widgets/recent_meals_placeholder.dart';
 import '../widgets/record_meal_photo_section.dart';
 import '../widgets/record_meal_save_bar.dart';
 
-/// 记录饮食：照片、餐别、最近餐占位、手动食物、情绪、备注、保存。
+/// 记录饮食：照片、餐别、食物列表、情绪、备注、保存。
 class RecordMealPage extends ConsumerStatefulWidget {
   const RecordMealPage({super.key});
 
@@ -28,12 +30,24 @@ class RecordMealPage extends ConsumerStatefulWidget {
 }
 
 class _RecordMealPageState extends ConsumerState<RecordMealPage> {
-  String _mealType = MealTypes.lunch;
+  late String _mealType;
   FileUploadResponse? _uploaded;
+  bool _uploading = false;
+  bool _aiRecognizing = false;
+  bool _photoAiCompleted = false;
+  int _aiSession = 0;
+
   final List<DraftFoodItem> _foods = [];
   final TextEditingController _noteController = TextEditingController();
   Set<int> _emotionIds = {};
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mealType = mealTypeForNow();
+    _emotionIds = {EmotionChipsSection.options.first.id};
+  }
 
   @override
   void dispose() {
@@ -41,12 +55,59 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
     super.dispose();
   }
 
-  String get _recordMethod => _uploaded == null ? 'manual' : 'photo';
+  String get _recordMethod {
+    if (_uploaded == null) return 'manual';
+    if (_photoAiCompleted) return 'photo_ai';
+    return 'photo';
+  }
 
-  bool get _canSave => _foods.isNotEmpty;
+  bool get _canSave =>
+      _foods.isNotEmpty && !_uploading && !_aiRecognizing && !_saving;
+
+  void _onUploadedChanged(FileUploadResponse? v) {
+    setState(() {
+      _uploaded = v;
+      if (v == null) {
+        _photoAiCompleted = false;
+        _foods.removeWhere((e) => e.fromAi);
+        _aiSession++;
+        _aiRecognizing = false;
+      }
+    });
+    if (v != null) {
+      _startAiStub();
+    }
+  }
+
+  void _startAiStub() {
+    final session = ++_aiSession;
+    setState(() => _aiRecognizing = true);
+    Future<void>.delayed(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      if (session != _aiSession) return;
+      setState(() {
+        for (final r in AiStubFoods.rows) {
+          _foods.add(
+            DraftFoodItem.aiStub(
+              foodItemId: r.id,
+              name: r.name,
+              kcalPer100g: r.kcalPer100g.toDouble(),
+            ),
+          );
+        }
+        _photoAiCompleted = true;
+        _aiRecognizing = false;
+      });
+    });
+  }
+
+  void _interruptAi() {
+    _aiSession++;
+    setState(() => _aiRecognizing = false);
+  }
 
   Future<void> _save() async {
-    if (!_canSave || _saving) return;
+    if (!_canSave) return;
 
     setState(() => _saving = true);
     try {
@@ -93,11 +154,14 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
         for (var i = 0; i < _foods.length; i++)
           <String, dynamic>{
             'foodNameSnapshot': _foods[i].name,
-            'recognitionSource': 'user_manual',
+            'recognitionSource': _foods[i].recognitionSource,
             'displayUnit': 'g',
             'sortOrder': i,
+            'estimatedWeightG': _foods[i].weightG,
+            if (_foods[i].foodItemId != null) 'foodItemId': _foods[i].foodItemId,
             if (_foods[i].estimatedCalories != null)
               'estimatedCalories': _foods[i].estimatedCalories,
+            if (_foods[i].foodItemId != null) 'nutritionCalcBasis': 'food_db',
           },
       ],
       'images': _uploaded == null
@@ -111,6 +175,12 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
             ],
       'emotions': <Map<String, dynamic>>[],
     };
+  }
+
+  void _setWeight(int index, double w) {
+    setState(() {
+      _foods[index] = _foods[index].copyWith(weightG: w);
+    });
   }
 
   @override
@@ -133,61 +203,90 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
           ),
           centerTitle: true,
         ),
-        body: Column(
+        body: Stack(
           children: [
-            Expanded(
-              child: SafeArea(
-                bottom: false,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s24),
+            Column(
+              children: [
+                Expanded(
+                  child: SafeArea(
+                    bottom: false,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          RecordMealPhotoSection(
+                            onUploadedChanged: _onUploadedChanged,
+                            onUploadingChanged: (v) => setState(() => _uploading = v),
+                          ),
+                          const SizedBox(height: AppSpacing.s24),
+                          MealTypeSelector(
+                            value: _mealType,
+                            onChanged: (v) => setState(() => _mealType = v),
+                          ),
+                          const SizedBox(height: AppSpacing.s24),
+                          RecentMealsPlaceholder(mealType: _mealType),
+                          const SizedBox(height: AppSpacing.s16),
+                          ManualAddFoodButton(
+                            onAdd: (item) {
+                              setState(() => _foods.add(item));
+                            },
+                          ),
+                          if (_foods.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.s16),
+                            _FoodItemsList(
+                              items: _foods,
+                              onRemoveAt: (i) {
+                                setState(() => _foods.removeAt(i));
+                              },
+                              onWeightChanged: _setWeight,
+                            ),
+                          ],
+                          const SizedBox(height: AppSpacing.s24),
+                          EmotionChipsSection(
+                            selectedIds: _emotionIds,
+                            onChanged: (s) => setState(() => _emotionIds = s),
+                          ),
+                          const SizedBox(height: AppSpacing.s24),
+                          MealNotesField(controller: _noteController),
+                          const SizedBox(height: AppSpacing.s24),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                RecordMealSaveBar(
+                  canSave: _canSave,
+                  loading: _saving,
+                  onSave: _save,
+                ),
+              ],
+            ),
+            if (_aiRecognizing)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: const Color(0x99000000),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      RecordMealPhotoSection(
-                        onUploadedChanged: (v) {
-                          setState(() => _uploaded = v);
-                        },
+                      const CircularProgressIndicator(color: AppColors.primary),
+                      const SizedBox(height: AppSpacing.s24),
+                      Text(
+                        'AI 识别中…',
+                        style: AppTypography.titleSmall(color: AppColors.textInverse),
                       ),
                       const SizedBox(height: AppSpacing.s24),
-                      MealTypeSelector(
-                        value: _mealType,
-                        onChanged: (v) => setState(() => _mealType = v),
-                      ),
-                      const SizedBox(height: AppSpacing.s24),
-                      RecentMealsPlaceholder(mealType: _mealType),
-                      const SizedBox(height: AppSpacing.s16),
-                      ManualAddFoodButton(
-                        onAdd: (item) {
-                          setState(() => _foods.add(item));
-                        },
-                      ),
-                      if (_foods.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.s16),
-                        _FoodItemsList(
-                          items: _foods,
-                          onRemoveAt: (i) {
-                            setState(() => _foods.removeAt(i));
-                          },
+                      TextButton(
+                        onPressed: _interruptAi,
+                        child: Text(
+                          '手动打断，自行添加食物',
+                          style: AppTypography.buttonText(color: AppColors.textInverse),
                         ),
-                      ],
-                      const SizedBox(height: AppSpacing.s24),
-                      EmotionChipsSection(
-                        selectedIds: _emotionIds,
-                        onChanged: (s) => setState(() => _emotionIds = s),
                       ),
-                      const SizedBox(height: AppSpacing.s24),
-                      MealNotesField(controller: _noteController),
-                      const SizedBox(height: AppSpacing.s24),
                     ],
                   ),
                 ),
               ),
-            ),
-            RecordMealSaveBar(
-              canSave: _canSave,
-              loading: _saving,
-              onSave: _save,
-            ),
           ],
         ),
       ),
@@ -199,10 +298,12 @@ class _FoodItemsList extends StatelessWidget {
   const _FoodItemsList({
     required this.items,
     required this.onRemoveAt,
+    required this.onWeightChanged,
   });
 
   final List<DraftFoodItem> items;
   final ValueChanged<int> onRemoveAt;
+  final void Function(int index, double weightG) onWeightChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -220,22 +321,101 @@ class _FoodItemsList extends StatelessWidget {
             child: Material(
               color: AppColors.bgMuted,
               borderRadius: BorderRadius.circular(AppRadius.md),
-              child: ListTile(
-                title: Text(
-                  items[i].name,
-                  style: AppTypography.bodyLarge(color: AppColors.textPrimary),
-                ),
-                subtitle: items[i].estimatedCalories != null
-                    ? Text(
-                        '${items[i].estimatedCalories!.toStringAsFixed(0)} kcal',
-                        style:
-                            AppTypography.bodySmall(color: AppColors.primary),
-                      )
-                    : null,
-                trailing: IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  color: AppColors.textTertiary,
-                  onPressed: () => onRemoveAt(i),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.s12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      items[i].name,
+                                      style: AppTypography.bodyLarge(
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (items[i].fromAi) ...[
+                                    const SizedBox(width: AppSpacing.s8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AppSpacing.s8,
+                                        vertical: AppSpacing.s4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primarySoft,
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.sm),
+                                      ),
+                                      child: Text(
+                                        'AI 识别',
+                                        style: AppTypography.labelMedium(
+                                          color: AppColors.primary,
+                                        ).copyWith(fontSize: 11),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              if (items[i].kcalPer100g != null) ...[
+                                const SizedBox(height: AppSpacing.s4),
+                                Text(
+                                  '${items[i].kcalPer100g!.toStringAsFixed(0)} kcal/100g',
+                                  style: AppTypography.bodySmall(
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (items[i].estimatedCalories != null)
+                          Text(
+                            '${items[i].estimatedCalories!.toStringAsFixed(0)} kcal',
+                            style: AppTypography.titleSmall(color: AppColors.primary),
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          color: AppColors.textTertiary,
+                          onPressed: () => onRemoveAt(i),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.s8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            final w = (items[i].weightG - 10).clamp(10, 5000);
+                            onWeightChanged(i, w.toDouble());
+                          },
+                          icon: const Icon(Icons.remove_rounded),
+                          color: AppColors.textSecondary,
+                        ),
+                        Text(
+                          '${items[i].weightG.toStringAsFixed(0)}g',
+                          style: AppTypography.labelMedium(color: AppColors.textPrimary),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            final w = (items[i].weightG + 10).clamp(10, 5000);
+                            onWeightChanged(i, w.toDouble());
+                          },
+                          icon: const Icon(Icons.add_rounded),
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),

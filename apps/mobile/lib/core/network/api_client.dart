@@ -16,6 +16,32 @@ class ApiClient {
 
   Dio get dio => _dio;
 
+  /// GET JSON，`code==0` 时将 `data` 交给 [parseData]。
+  Future<T> getJson<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    required DataParser<T> parseData,
+  }) async {
+    try {
+      final response = await _dio.get<Object?>(
+        path,
+        queryParameters: queryParameters,
+      );
+      final raw = response.data;
+      if (raw is! Map<String, dynamic>) {
+        throw ApiHttpException(response.statusCode, '响应不是 JSON 对象');
+      }
+      return ApiEnvelope.parse<T>(raw, parseData);
+    } on ApiBusinessException {
+      rethrow;
+    } on DioException catch (e) {
+      AppLogger.apiError('GET $path', e);
+      final status = e.response?.statusCode;
+      final msg = e.message ?? '网络请求失败';
+      throw ApiHttpException(status, msg);
+    }
+  }
+
   /// POST JSON，`code==0` 时将 `data` 交给 [parseData]。
   Future<T> postJson<T>(
     String path, {

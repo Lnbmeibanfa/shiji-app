@@ -10,6 +10,7 @@ import 'storage/auth_storage.dart';
 import 'storage/secure_storage_facade.dart';
 import '../features/auth/repositories/auth_repository.dart';
 import '../features/camera/repositories/meal_photo_repository.dart';
+import '../features/record_meal/repositories/food_item_repository.dart';
 import '../features/record_meal/repositories/meal_record_repository.dart';
 
 final secureStorageProvider = Provider<SecureStorageFacade>((ref) {
@@ -40,6 +41,10 @@ final mealPhotoRepositoryProvider = Provider<MealPhotoRepository>((ref) {
 
 final mealRecordRepositoryProvider = Provider<MealRecordRepository>((ref) {
   return MealRecordRepository(ref.watch(apiClientProvider));
+});
+
+final foodItemRepositoryProvider = Provider<FoodItemRepository>((ref) {
+  return FoodItemRepository(ref.watch(apiClientProvider));
 });
 
 final authControllerProvider = ChangeNotifierProvider<AuthController>((ref) {
