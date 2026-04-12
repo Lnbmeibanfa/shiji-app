@@ -4,6 +4,7 @@ import '../config/app_config.dart';
 import '../logging/app_logger.dart';
 import 'api_exceptions.dart';
 import 'api_response.dart';
+import 'models/file_upload_response.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 
@@ -51,6 +52,54 @@ class ApiClient {
       body: body,
       parseData: (_) => null,
     );
+  }
+
+  /// 餐食照片字节上传（`POST /api/files/upload`，字段 `file`）。
+  Future<FileUploadResponse> uploadMealPhotoBytes({
+    required List<int> bytes,
+    required String filename,
+  }) {
+    final file = MultipartFile.fromBytes(bytes, filename: filename);
+    return postMultipartFile(
+      '/api/files/upload',
+      fieldName: 'file',
+      file: file,
+    );
+  }
+
+  /// `multipart/form-data` 上传，`[fieldName]` 对应后端 `@RequestParam("file")` 等。
+  /// 使用 [FormData] 时由 Dio 设置带 boundary 的 Content-Type，故不沿用 BaseOptions 的 JSON Content-Type。
+  Future<FileUploadResponse> postMultipartFile(
+    String path, {
+    required String fieldName,
+    required MultipartFile file,
+  }) async {
+    final formData = FormData.fromMap(<String, dynamic>{fieldName: file});
+    try {
+      final response = await _dio.post<Object?>(
+        path,
+        data: formData,
+        // 覆盖 BaseOptions 的 application/json；发送前 dio 会为 FormData 写成带 boundary 的 multipart。
+        options: Options(
+          contentType: Headers.multipartFormDataContentType,
+        ),
+      );
+      final raw = response.data;
+      if (raw is! Map<String, dynamic>) {
+        throw ApiHttpException(response.statusCode, '响应不是 JSON 对象');
+      }
+      return ApiEnvelope.parse<FileUploadResponse>(
+        raw,
+        FileUploadResponse.fromJson,
+      );
+    } on ApiBusinessException {
+      rethrow;
+    } on DioException catch (e) {
+      AppLogger.apiError('POST multipart $path', e);
+      final status = e.response?.statusCode;
+      final msg = e.message ?? '网络请求失败';
+      throw ApiHttpException(status, msg);
+    }
   }
 }
 

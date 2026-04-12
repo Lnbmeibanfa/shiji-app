@@ -9,6 +9,8 @@ import 'routing/app_router.dart' show createAppRouter;
 import 'storage/auth_storage.dart';
 import 'storage/secure_storage_facade.dart';
 import '../features/auth/repositories/auth_repository.dart';
+import '../features/camera/repositories/meal_photo_repository.dart';
+import '../features/record_meal/repositories/meal_record_repository.dart';
 
 final secureStorageProvider = Provider<SecureStorageFacade>((ref) {
   return SecureStorageFacade();
@@ -30,6 +32,14 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(apiClientProvider));
+});
+
+final mealPhotoRepositoryProvider = Provider<MealPhotoRepository>((ref) {
+  return MealPhotoRepository(ref.watch(apiClientProvider));
+});
+
+final mealRecordRepositoryProvider = Provider<MealRecordRepository>((ref) {
+  return MealRecordRepository(ref.watch(apiClientProvider));
 });
 
 final authControllerProvider = ChangeNotifierProvider<AuthController>((ref) {

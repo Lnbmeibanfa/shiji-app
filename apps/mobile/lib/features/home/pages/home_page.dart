@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/routing/route_paths.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -44,9 +45,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: AppSpacing.s20),
               CaptureCard(
                 title: '拍一顿',
-                onTap: () {
-                  // TODO: 接入拍照 / 选图路由
-                },
+                onTap: () => context.push(RoutePaths.recordMeal),
               ),
               const SizedBox(height: AppSpacing.s20),
               CalorieProgressCard.summary(

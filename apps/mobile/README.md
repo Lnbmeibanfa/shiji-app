@@ -42,11 +42,17 @@ await ref.read(authControllerProvider).setSessionToken(login.token);
 
 **冷启动验证（手动）**：登录后杀进程再开，应仍进首页（token 从安全存储恢复）；退出后再开应进登录页。
 
+### 记录饮食（`/record-meal`）与 OSS / 保存
+
+登录后从首页「拍一顿」或「记录」Tab「上传照片」进入 **记录饮食** 全屏页：相册 / 相机选图后自动调用 `POST /api/files/upload`（multipart，字段 `file`），成功则展示 OSS 返回图 URL；填写餐别与至少一条食物后可调用 `POST /api/meal-records` 保存。网络层见 `ApiClient`，业务经 `MealPhotoRepository`、`MealRecordRepository`。
+
+**Web（Chrome）联调**：若 `flutter run -d chrome` 调本机 API，需后端 CORS 允许该来源及对 `/api/files/upload` 的 `multipart` 预检；权限与相册行为与移动端不一致时以真机/模拟器为准。
+
 ## 架构说明（Riverpod + GoRouter）
 
-- `lib/core/providers.dart`：注册 `AuthStorage`、`Dio`、`ApiClient`、`AuthRepository`、`AuthController`、`GoRouter`。
+- `lib/core/providers.dart`：注册 `AuthStorage`、`Dio`、`ApiClient`、`AuthRepository`、`MealPhotoRepository`、`MealRecordRepository`、`AuthController`、`GoRouter`。
 - `AuthController` 实现 `ChangeNotifier`，作为 `GoRouter.refreshListenable`，登录态变化会触发 redirect。
-- 业务页面与 Widget **禁止** `import 'package:dio/dio.dart'`；HTTP 仅通过 `AuthRepository` 等封装访问。
+- 业务页面与 Widget **禁止** `import 'package:dio/dio.dart'`；HTTP 仅通过 `AuthRepository`、`MealPhotoRepository`、`MealRecordRepository` 等封装访问（见 `docs/infrastructure.md`）。
 
 详见 `openspec/changes/flutter-client-infrastructure-v1/design.md`。
 

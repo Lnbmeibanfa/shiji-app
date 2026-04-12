@@ -8,4 +8,7 @@ abstract final class RoutePaths {
   static const record = '/record';
   static const review = '/review';
   static const profile = '/profile';
+
+  /// 记录饮食（选图 / 拍照 / 表单；全屏路由）。
+  static const recordMeal = '/record-meal';
 }

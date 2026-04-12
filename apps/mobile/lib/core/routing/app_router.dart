@@ -5,6 +5,7 @@ import '../auth/auth_controller.dart';
 import '../../features/auth/pages/login_page.dart';
 import '../../features/shell/pages/main_shell_page.dart';
 import '../../features/home/pages/home_page.dart';
+import '../../features/record_meal/pages/record_meal_page.dart';
 import '../../features/shell/pages/shell_tab_placeholders.dart';
 import '../../features/splash/pages/splash_page.dart';
 import 'route_paths.dart';
@@ -16,7 +17,6 @@ GoRouter createAppRouter(AuthController auth) {
     redirect: (BuildContext context, GoRouterState state) {
       final ac = auth;
       final loc = state.matchedLocation;
-
       if (!ac.isReady) {
         if (loc != RoutePaths.splash) {
           return RoutePaths.splash;
@@ -45,6 +45,10 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: RoutePaths.login,
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.recordMeal,
+        builder: (context, state) => const RecordMealPage(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
