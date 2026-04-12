@@ -55,6 +55,7 @@ public class FileStorageServiceImpl implements FileStorageService {
     @Override
     @Transactional
     public FileUploadResponse uploadMealPhoto(long userId, MultipartFile file) {
+        
         if (!ossProperties.isEnabled() || ossClient == null) {
             throw new FileBusinessException(FileErrorCode.OSS_NOT_CONFIGURED);
         }
