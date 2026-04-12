@@ -1,31 +1,24 @@
--- ---------------------------------------------------------------------------
--- 饮食记录（一餐一条）
--- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS meal_record (
-  id BIGINT NOT NULL AUTO_INCREMENT,
+CREATE TABLE `meal_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `meal_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '餐别：breakfast | lunch | dinner | snack | extra_meal',
+  `recorded_at` datetime(6) NOT NULL COMMENT '用餐时间（用户选择）',
+  `record_date` date DEFAULT NULL COMMENT '记录所属日期，便于按天查询统计',
+  `primary_emotion_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '主情绪编码，用于列表展示和快速筛选',
+  `note` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '备注',
+  `record_method` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'manual' COMMENT '记录方式：manual | photo | photo_ai | quick_add',
+  `completion_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'completed' COMMENT '完成状态：draft | completed | pending_enrichment',
+  `recognition_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'skipped' COMMENT '识别状态：skipped | pending | success | partial_success | failed',
+  `total_estimated_calories` decimal(10,2) DEFAULT NULL COMMENT '该餐总估算热量(kcal)',
+  `total_estimated_protein` decimal(10,2) DEFAULT NULL COMMENT '该餐总估算蛋白质(g)',
+  `total_estimated_fat` decimal(10,2) DEFAULT NULL COMMENT '该餐总估算脂肪(g)',
+  `total_estimated_carb` decimal(10,2) DEFAULT NULL COMMENT '该餐总估算碳水(g)',
+  `visibility_status` tinyint NOT NULL DEFAULT '1' COMMENT '可见状态：1正常 2隐藏',
+  `deleted_at` datetime(6) DEFAULT NULL COMMENT '软删除时间',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_meal_user_recorded` (`user_id`,`recorded_at`),
+  CONSTRAINT `fk_meal_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='饮食记录表'
 
-  user_id BIGINT NOT NULL COMMENT '用户ID',
-
-  file_id BIGINT NOT NULL COMMENT '主图文件ID，关联 file_asset.id',
-
-  meal_type VARCHAR(32) NULL COMMENT '餐别：breakfast | lunch | dinner | snack',
-
-  recorded_at DATETIME(6) NOT NULL COMMENT '用餐时间（用户选择）',
-
-  note VARCHAR(1024) NULL COMMENT '备注',
-
-  deleted_at DATETIME(6) NULL COMMENT '软删除时间',
-
-  created_at DATETIME(6) NOT NULL,
-  updated_at DATETIME(6) NOT NULL,
-
-  PRIMARY KEY (id),
-
-  KEY idx_meal_user_recorded (user_id, recorded_at),
-  KEY idx_meal_file (file_id),
-
-  CONSTRAINT fk_meal_user FOREIGN KEY (user_id) REFERENCES user (id),
-  CONSTRAINT fk_meal_file FOREIGN KEY (file_id) REFERENCES file_asset (id)
-
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT='饮食记录表';
