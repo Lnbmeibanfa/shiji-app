@@ -19,7 +19,7 @@ spring:
 # 本地未配置时可保持 enabled=false，上传接口将返回「对象存储未配置」。
 shiji:
   oss:
-    enabled: false
+    enabled: true
     endpoint: ${OSS_ENDPOINT:https://oss-cn-hangzhou.aliyuncs.com}
     region: ${OSS_REGION:oss-cn-guangzhou}
     bucket: ${OSS_BUCKET:}
