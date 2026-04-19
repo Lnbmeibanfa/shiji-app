@@ -61,6 +61,18 @@ public class MealRecordEntity {
     @Column(name = "total_estimated_carb", precision = 10, scale = 2)
     private BigDecimal totalEstimatedCarb;
 
+    @Column(name = "dish_id")
+    private Long dishId;
+
+    @Column(name = "dish_name_snapshot", length = 128)
+    private String dishNameSnapshot;
+
+    @Column(name = "dish_match_source", length = 32)
+    private String dishMatchSource;
+
+    @Column(name = "dish_match_confidence", precision = 5, scale = 4)
+    private BigDecimal dishMatchConfidence;
+
     @Column(name = "visibility_status", nullable = false)
     private Integer visibilityStatus;
 

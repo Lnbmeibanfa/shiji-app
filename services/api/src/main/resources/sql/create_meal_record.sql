@@ -13,12 +13,19 @@ CREATE TABLE `meal_record` (
   `total_estimated_protein` decimal(10,2) DEFAULT NULL COMMENT '该餐总估算蛋白质(g)',
   `total_estimated_fat` decimal(10,2) DEFAULT NULL COMMENT '该餐总估算脂肪(g)',
   `total_estimated_carb` decimal(10,2) DEFAULT NULL COMMENT '该餐总估算碳水(g)',
+  `dish_id` bigint DEFAULT NULL COMMENT '命中的标准菜品ID',
+  `dish_name_snapshot` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '本次记录的菜品名称快照',
+  `dish_match_source` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '菜品来源：ai_match | user_selected | takeout_match | manual',
+  `dish_match_confidence` decimal(5,4) DEFAULT NULL COMMENT '菜品命中置信度，0~1',
   `visibility_status` tinyint NOT NULL DEFAULT '1' COMMENT '可见状态：1正常 2隐藏',
   `deleted_at` datetime(6) DEFAULT NULL COMMENT '软删除时间',
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_meal_user_recorded` (`user_id`,`recorded_at`),
+  KEY `idx_meal_record_dish_id` (`dish_id`),
+  KEY `idx_meal_record_user_date` (`user_id`,`record_date`),
+  CONSTRAINT `fk_meal_record_dish` FOREIGN KEY (`dish_id`) REFERENCES `dish` (`id`),
   CONSTRAINT `fk_meal_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='饮食记录表'
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='饮食记录表'
 

@@ -42,6 +42,12 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
   Set<int> _emotionIds = {};
   bool _saving = false;
 
+  /// 后端已支持餐级菜品命中字段；接入真实 AI 时可赋值后随保存请求一并提交。
+  int? _matchedDishId;
+  String? _matchedDishName;
+  String? _dishMatchSource;
+  double? _dishMatchConfidence;
+
   @override
   void initState() {
     super.initState();
@@ -150,6 +156,10 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
       'recordMethod': _recordMethod,
       'completionStatus': 'completed',
       'recognitionStatus': 'skipped',
+      if (_matchedDishId != null) 'dishId': _matchedDishId,
+      if (_matchedDishName != null) 'dishNameSnapshot': _matchedDishName,
+      if (_dishMatchSource != null) 'dishMatchSource': _dishMatchSource,
+      if (_dishMatchConfidence != null) 'dishMatchConfidence': _dishMatchConfidence,
       'foodItems': [
         for (var i = 0; i < _foods.length; i++)
           <String, dynamic>{

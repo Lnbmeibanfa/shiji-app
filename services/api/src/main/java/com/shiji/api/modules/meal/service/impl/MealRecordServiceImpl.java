@@ -7,23 +7,37 @@ import com.shiji.api.modules.meal.model.dto.request.CreateMealRecordRequest;
 import com.shiji.api.modules.meal.model.dto.request.MealEmotionRequest;
 import com.shiji.api.modules.meal.model.dto.request.MealFoodImageRequest;
 import com.shiji.api.modules.meal.model.dto.request.MealFoodItemRequest;
+import com.shiji.api.modules.meal.model.dto.request.MealRecognitionItemPersistRequest;
+import com.shiji.api.modules.meal.model.dto.request.MealRecognitionPersistRequest;
 import com.shiji.api.modules.meal.model.dto.response.CreateMealRecordResponse;
+import com.shiji.api.modules.meal.model.entity.DishFoodItemRelEntity;
 import com.shiji.api.modules.meal.model.entity.EmotionTagEntity;
+import com.shiji.api.modules.meal.model.entity.FoodItemEntity;
+import com.shiji.api.modules.meal.model.entity.FoodNutritionEntity;
 import com.shiji.api.modules.meal.model.entity.MealFoodItemEntity;
+import com.shiji.api.modules.meal.model.entity.MealRecognitionItemEntity;
+import com.shiji.api.modules.meal.model.entity.MealRecognitionResultEntity;
 import com.shiji.api.modules.meal.model.entity.MealRecordEmotionRelEntity;
 import com.shiji.api.modules.meal.model.entity.MealRecordEntity;
 import com.shiji.api.modules.meal.model.entity.MealRecordImageEntity;
+import com.shiji.api.modules.meal.repository.DishFoodItemRelRepository;
+import com.shiji.api.modules.meal.repository.DishRepository;
 import com.shiji.api.modules.meal.repository.EmotionTagRepository;
 import com.shiji.api.modules.meal.repository.FoodItemRepository;
+import com.shiji.api.modules.meal.repository.FoodNutritionRepository;
 import com.shiji.api.modules.meal.repository.MealFoodItemRepository;
+import com.shiji.api.modules.meal.repository.MealRecognitionItemRepository;
+import com.shiji.api.modules.meal.repository.MealRecognitionResultRepository;
 import com.shiji.api.modules.meal.repository.MealRecordEmotionRelRepository;
 import com.shiji.api.modules.meal.repository.MealRecordImageRepository;
 import com.shiji.api.modules.meal.repository.MealRecordRepository;
 import com.shiji.api.modules.meal.service.MealRecordService;
 import com.shiji.api.modules.meal.service.exception.MealBusinessException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +64,11 @@ public class MealRecordServiceImpl implements MealRecordService {
     private final EmotionTagRepository emotionTagRepository;
     private final FileAssetRepository fileAssetRepository;
     private final FoodItemRepository foodItemRepository;
+    private final FoodNutritionRepository foodNutritionRepository;
+    private final DishRepository dishRepository;
+    private final DishFoodItemRelRepository dishFoodItemRelRepository;
+    private final MealRecognitionResultRepository mealRecognitionResultRepository;
+    private final MealRecognitionItemRepository mealRecognitionItemRepository;
 
     @Override
     @Transactional
@@ -64,16 +83,26 @@ public class MealRecordServiceImpl implements MealRecordService {
         List<EmotionTagEntity> resolvedEmotions = resolveEmotionTags(request.getEmotions());
         String primaryEmotionCode = computePrimaryEmotionCode(resolvedEmotions);
 
-        for (MealFoodItemRequest item : request.getFoodItems()) {
+        if (request.getDishId() != null) {
+            assertDishUsable(request.getDishId());
+        }
+
+        List<MealFoodItemRequest> resolvedFoodItems = resolveFoodItems(request);
+
+        for (MealFoodItemRequest item : resolvedFoodItems) {
             if (item.getFoodItemId() != null && !foodItemRepository.existsById(item.getFoodItemId())) {
                 throw new MealBusinessException(MealErrorCode.MEAL_REQUEST_INVALID);
             }
         }
 
-        BigDecimal totalCalories = sumFoodField(request.getFoodItems(), MealFoodItemRequest::getEstimatedCalories);
-        BigDecimal totalProtein = sumFoodField(request.getFoodItems(), MealFoodItemRequest::getEstimatedProtein);
-        BigDecimal totalFat = sumFoodField(request.getFoodItems(), MealFoodItemRequest::getEstimatedFat);
-        BigDecimal totalCarb = sumFoodField(request.getFoodItems(), MealFoodItemRequest::getEstimatedCarb);
+        if (request.getRecognition() != null) {
+            assertRecognitionRefs(request.getRecognition());
+        }
+
+        BigDecimal totalCalories = sumFoodField(resolvedFoodItems, MealFoodItemRequest::getEstimatedCalories);
+        BigDecimal totalProtein = sumFoodField(resolvedFoodItems, MealFoodItemRequest::getEstimatedProtein);
+        BigDecimal totalFat = sumFoodField(resolvedFoodItems, MealFoodItemRequest::getEstimatedFat);
+        BigDecimal totalCarb = sumFoodField(resolvedFoodItems, MealFoodItemRequest::getEstimatedCarb);
 
         LocalDateTime now = LocalDateTime.now();
         MealRecordEntity meal = new MealRecordEntity();
@@ -92,6 +121,10 @@ public class MealRecordServiceImpl implements MealRecordService {
         meal.setTotalEstimatedProtein(totalProtein);
         meal.setTotalEstimatedFat(totalFat);
         meal.setTotalEstimatedCarb(totalCarb);
+        meal.setDishId(request.getDishId());
+        meal.setDishNameSnapshot(request.getDishNameSnapshot());
+        meal.setDishMatchSource(request.getDishMatchSource());
+        meal.setDishMatchConfidence(request.getDishMatchConfidence());
         meal.setVisibilityStatus(1);
         meal.setDeletedAt(null);
         meal.setCreatedAt(now);
@@ -100,7 +133,7 @@ public class MealRecordServiceImpl implements MealRecordService {
         mealRecordRepository.save(meal);
         Long mealId = meal.getId();
 
-        for (MealFoodItemRequest item : request.getFoodItems()) {
+        for (MealFoodItemRequest item : resolvedFoodItems) {
             MealFoodItemEntity row = new MealFoodItemEntity();
             row.setMealRecordId(mealId);
             row.setFoodItemId(item.getFoodItemId());
@@ -151,7 +184,134 @@ public class MealRecordServiceImpl implements MealRecordService {
             mealRecordEmotionRelRepository.save(row);
         }
 
+        if (request.getRecognition() != null) {
+            persistRecognition(mealId, request.getRecognition(), now);
+        }
+
         return CreateMealRecordResponse.builder().mealRecordId(mealId).build();
+    }
+
+    private void assertDishUsable(long dishId) {
+        if (!dishRepository.existsByIdAndEdibleStatus(dishId, 1)) {
+            throw new MealBusinessException(MealErrorCode.MEAL_DISH_NOT_FOUND);
+        }
+    }
+
+    private void assertRecognitionRefs(MealRecognitionPersistRequest recognition) {
+        if (recognition.getMatchedDishId() != null) {
+            assertDishUsable(recognition.getMatchedDishId());
+        }
+        for (MealRecognitionItemPersistRequest line : recognition.getItems()) {
+            if (line.getFoodItemId() != null && !foodItemRepository.existsById(line.getFoodItemId())) {
+                throw new MealBusinessException(MealErrorCode.MEAL_REQUEST_INVALID);
+            }
+        }
+    }
+
+    /**
+     * 优先使用请求中的食物行；若为空且开启拆解，则按 {@code dish_food_item_rel} 生成候选行（同一事务内再写入
+     * {@link MealFoodItemEntity}，保证与总热量求和一致）。
+     */
+    private List<MealFoodItemRequest> resolveFoodItems(CreateMealRecordRequest request) {
+        List<MealFoodItemRequest> fromClient = request.getFoodItems();
+        if (fromClient != null && !fromClient.isEmpty()) {
+            return new ArrayList<>(fromClient);
+        }
+        if (Boolean.TRUE.equals(request.getExpandDishToFoodItems()) && request.getDishId() != null) {
+            assertDishUsable(request.getDishId());
+            List<MealFoodItemRequest> expanded = expandDishToFoodItems(request.getDishId());
+            if (expanded.isEmpty()) {
+                throw new MealBusinessException(MealErrorCode.MEAL_DISH_EXPAND_EMPTY);
+            }
+            return expanded;
+        }
+        return fromClient != null ? new ArrayList<>(fromClient) : new ArrayList<>();
+    }
+
+    private List<MealFoodItemRequest> expandDishToFoodItems(long dishId) {
+        List<DishFoodItemRelEntity> rels = dishFoodItemRelRepository.findByDishIdOrderBySortOrderAscIdAsc(dishId);
+        List<MealFoodItemRequest> out = new ArrayList<>();
+        int order = 0;
+        for (DishFoodItemRelEntity rel : rels) {
+            FoodItemEntity fi = foodItemRepository
+                    .findById(rel.getFoodItemId())
+                    .orElseThrow(() -> new MealBusinessException(MealErrorCode.MEAL_DISH_EXPAND_EMPTY));
+            MealFoodItemRequest row = new MealFoodItemRequest();
+            row.setFoodItemId(fi.getId());
+            row.setFoodNameSnapshot(fi.getFoodName());
+            row.setCategoryCodeSnapshot(fi.getCategoryCode());
+            row.setRecognitionSource("dish_expand");
+            row.setDisplayUnit("g");
+            row.setSortOrder(order++);
+            BigDecimal weightG = rel.getDefaultWeightG() != null
+                    ? rel.getDefaultWeightG()
+                    : new BigDecimal("100");
+            row.setEstimatedWeightG(weightG);
+            applyPer100gNutritionEstimates(row, fi.getId(), weightG);
+            out.add(row);
+        }
+        return out;
+    }
+
+    private void applyPer100gNutritionEstimates(MealFoodItemRequest row, long foodItemId, BigDecimal weightG) {
+        Optional<FoodNutritionEntity> nOpt = foodNutritionRepository.findFirstByFoodItemIdOrderByVersionNoDesc(foodItemId);
+        if (nOpt.isEmpty()) {
+            return;
+        }
+        FoodNutritionEntity n = nOpt.get();
+        if (!"per_100g".equals(n.getNutrientBasis())) {
+            return;
+        }
+        BigDecimal factor = weightG.divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP);
+        if (n.getCalories() != null) {
+            row.setEstimatedCalories(n.getCalories().multiply(factor).setScale(2, RoundingMode.HALF_UP));
+        }
+        if (n.getProtein() != null) {
+            row.setEstimatedProtein(n.getProtein().multiply(factor).setScale(2, RoundingMode.HALF_UP));
+        }
+        if (n.getFat() != null) {
+            row.setEstimatedFat(n.getFat().multiply(factor).setScale(2, RoundingMode.HALF_UP));
+        }
+        if (n.getCarbohydrate() != null) {
+            row.setEstimatedCarb(n.getCarbohydrate().multiply(factor).setScale(2, RoundingMode.HALF_UP));
+        }
+        row.setNutritionCalcBasis("food_db");
+    }
+
+    private void persistRecognition(long mealRecordId, MealRecognitionPersistRequest r, LocalDateTime now) {
+        MealRecognitionResultEntity head = new MealRecognitionResultEntity();
+        head.setMealRecordId(mealRecordId);
+        head.setRecognitionMode(StringUtils.hasText(r.getRecognitionMode()) ? r.getRecognitionMode() : "dish_first");
+        head.setResultSource(StringUtils.hasText(r.getResultSource()) ? r.getResultSource() : "food_recognition");
+        head.setMatchedDishId(r.getMatchedDishId());
+        head.setMatchedDishName(r.getMatchedDishName());
+        head.setOverallConfidence(r.getOverallConfidence());
+        head.setNeedUserConfirm(r.getNeedUserConfirm() != null ? r.getNeedUserConfirm() : 0);
+        head.setRawAiResponse(r.getRawAiResponse());
+        head.setModelName(r.getModelName());
+        head.setPromptVersion(r.getPromptVersion());
+        head.setStatus(StringUtils.hasText(r.getStatus()) ? r.getStatus() : "success");
+        head.setFailureReason(r.getFailureReason());
+        head.setCreatedAt(now);
+        head.setUpdatedAt(now);
+        mealRecognitionResultRepository.save(head);
+        Long resultId = head.getId();
+
+        for (MealRecognitionItemPersistRequest line : r.getItems()) {
+            MealRecognitionItemEntity it = new MealRecognitionItemEntity();
+            it.setRecognitionResultId(resultId);
+            it.setFoodItemId(line.getFoodItemId());
+            it.setFoodNameSnapshot(line.getFoodNameSnapshot());
+            it.setCategoryCodeSnapshot(line.getCategoryCodeSnapshot());
+            it.setRecognitionConfidence(line.getRecognitionConfidence());
+            it.setEstimatedWeightG(line.getEstimatedWeightG());
+            it.setDisplayUnit(line.getDisplayUnit());
+            it.setSourceType(StringUtils.hasText(line.getSourceType()) ? line.getSourceType() : "ai");
+            it.setSortOrder(line.getSortOrder());
+            it.setCreatedAt(now);
+            it.setUpdatedAt(now);
+            mealRecognitionItemRepository.save(it);
+        }
     }
 
     private static void assertNoDuplicateFileIds(List<MealFoodImageRequest> images) {
