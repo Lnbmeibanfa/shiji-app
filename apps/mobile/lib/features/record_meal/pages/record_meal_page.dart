@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,12 +7,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/feedback/app_feedback.dart';
 import '../../../core/network/api_exceptions.dart';
 import '../../../core/network/models/file_upload_response.dart';
+import '../../../core/network/models/meal_photo_recognition_models.dart';
 import '../../../core/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../ai_stub_foods.dart';
 import '../meal_type_time.dart';
 import '../models/draft_food_item.dart';
 import '../widgets/emotion_chips_section.dart';
@@ -34,6 +36,7 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
   FileUploadResponse? _uploaded;
   bool _uploading = false;
   bool _aiRecognizing = false;
+  bool _recognitionPollCancelled = false;
   bool _photoAiCompleted = false;
   int _aiSession = 0;
 
@@ -67,8 +70,7 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
     return 'photo';
   }
 
-  bool get _canSave =>
-      _foods.isNotEmpty && !_uploading && !_aiRecognizing && !_saving;
+  bool get _canSave => _foods.isNotEmpty && !_uploading && !_saving;
 
   void _onUploadedChanged(FileUploadResponse? v) {
     setState(() {
@@ -78,36 +80,152 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
         _foods.removeWhere((e) => e.fromAi);
         _aiSession++;
         _aiRecognizing = false;
+        _recognitionPollCancelled = true;
       }
     });
     if (v != null) {
-      _startAiStub();
+      unawaited(_startMealPhotoRecognition(v.fileId));
     }
   }
 
-  void _startAiStub() {
+  Future<void> _startMealPhotoRecognition(int fileId) async {
     final session = ++_aiSession;
-    setState(() => _aiRecognizing = true);
-    Future<void>.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      if (session != _aiSession) return;
-      setState(() {
-        for (final r in AiStubFoods.rows) {
+    if (!mounted) return;
+    setState(() {
+      _aiRecognizing = true;
+      _recognitionPollCancelled = false;
+      _photoAiCompleted = false;
+    });
+    final repo = ref.read(mealPhotoRecognitionRepositoryProvider);
+    final deadline = DateTime.now().add(const Duration(seconds: 60));
+    try {
+      final created = await repo.createTask(fileId);
+      while (mounted && session == _aiSession && !_recognitionPollCancelled) {
+        if (DateTime.now().isAfter(deadline)) {
+          if (mounted) {
+            AppFeedback.showToast(
+              context,
+              kind: FeedbackToastKind.failure,
+              title: '识别超时，可稍后重试或更换图片后重新上传',
+            );
+          }
+          break;
+        }
+        await Future<void>.delayed(const Duration(seconds: 1));
+        if (!mounted || session != _aiSession || _recognitionPollCancelled) {
+          break;
+        }
+        final poll = await repo.poll(created.taskId);
+        if (!mounted || session != _aiSession || _recognitionPollCancelled) {
+          break;
+        }
+        if (poll.status == 'success' && poll.result != null) {
+          await _showApplyRecognitionDialog(poll.result!);
+          break;
+        }
+        if (poll.status == 'failed') {
+          if (mounted) {
+            AppFeedback.showToast(
+              context,
+              kind: FeedbackToastKind.failure,
+              title: poll.errorMessage?.isNotEmpty == true
+                  ? poll.errorMessage!
+                  : '识别失败（${poll.errorCode ?? '-'}）',
+            );
+          }
+          break;
+        }
+      }
+    } on ApiBusinessException catch (e) {
+      if (mounted) {
+        AppFeedback.showToast(
+          context,
+          kind: FeedbackToastKind.failure,
+          title: e.message.isNotEmpty ? e.message : '识别任务失败（${e.code}）',
+        );
+      }
+    } on ApiHttpException catch (e) {
+      if (mounted) {
+        AppFeedback.showToast(
+          context,
+          kind: FeedbackToastKind.failure,
+          title: e.message ?? '网络异常',
+        );
+      }
+    } finally {
+      if (mounted && session == _aiSession) {
+        setState(() => _aiRecognizing = false);
+      }
+    }
+  }
+
+  Future<void> _showApplyRecognitionDialog(DishIngredientVisionData data) async {
+    final rec = data.recognition;
+    final ingredients = rec.ingredients ?? <VisionIngredient>[];
+    final dish = rec.dish;
+    if (!mounted) return;
+    final apply = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final ingredientLine = ingredients.isEmpty
+            ? ''
+            : ingredients
+                .map((e) {
+                  final n = e.foodName.trim();
+                  return n.isNotEmpty ? n : '食物 #${e.ingredientId}';
+                })
+                .join('、');
+        return AlertDialog(
+          title: const Text('识别完成'),
+          content: SingleChildScrollView(
+            child: Text(
+              ingredients.isEmpty && dish == null
+                  ? '未匹配到菜品或食材，可手动添加食物。'
+                  : ingredients.isEmpty
+                      ? '已匹配菜品，未识别到具体食材，可将菜品信息写入保存请求或手动添加食物。'
+                      : '识别到食材：$ingredientLine\n\n是否加入当前列表？',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('暂不应用'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('应用'),
+            ),
+          ],
+        );
+      },
+    );
+    if (!mounted || apply != true) return;
+    setState(() {
+      if (dish != null) {
+        _matchedDishId = int.tryParse(dish.dishId);
+        _dishMatchSource = dish.match?.via;
+        _dishMatchConfidence = dish.confidence;
+        _matchedDishName = null;
+      }
+      for (final ing in ingredients) {
+        final id = int.tryParse(ing.ingredientId);
+        if (id != null) {
           _foods.add(
-            DraftFoodItem.aiStub(
-              foodItemId: r.id,
-              name: r.name,
-              kcalPer100g: r.kcalPer100g.toDouble(),
+            DraftFoodItem.aiFromVision(
+              foodItemId: id,
+              foodName: ing.foodName,
+              caloriesPer100g: ing.caloriesPer100g,
             ),
           );
         }
-        _photoAiCompleted = true;
-        _aiRecognizing = false;
-      });
+      }
+      _photoAiCompleted = dish != null || ingredients.isNotEmpty;
     });
   }
 
   void _interruptAi() {
+    _recognitionPollCancelled = true;
     _aiSession++;
     setState(() => _aiRecognizing = false);
   }
@@ -273,27 +391,47 @@ class _RecordMealPageState extends ConsumerState<RecordMealPage> {
               ],
             ),
             if (_aiRecognizing)
-              Positioned.fill(
-                child: ColoredBox(
-                  color: const Color(0x99000000),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(color: AppColors.primary),
-                      const SizedBox(height: AppSpacing.s24),
-                      Text(
-                        'AI 识别中…',
-                        style: AppTypography.titleSmall(color: AppColors.textInverse),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: Material(
+                    elevation: 3,
+                    color: AppColors.bgPrimary,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.s16,
+                        vertical: AppSpacing.s12,
                       ),
-                      const SizedBox(height: AppSpacing.s24),
-                      TextButton(
-                        onPressed: _interruptAi,
-                        child: Text(
-                          '手动打断，自行添加食物',
-                          style: AppTypography.buttonText(color: AppColors.textInverse),
-                        ),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.s12),
+                          Expanded(
+                            child: Text(
+                              'AI 识别中（约 60 秒内完成，不影响保存）',
+                              style: AppTypography.bodySmall(color: AppColors.textSecondary),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _interruptAi,
+                            child: Text(
+                              '取消',
+                              style: AppTypography.buttonText(color: AppColors.primary),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

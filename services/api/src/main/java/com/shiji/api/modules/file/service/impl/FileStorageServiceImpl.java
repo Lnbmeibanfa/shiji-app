@@ -19,7 +19,9 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.io.ByteArrayOutputStream;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -127,6 +129,43 @@ public class FileStorageServiceImpl implements FileStorageService {
                 .contentType(contentType)
                 .size(file.getSize())
                 .build();
+    }
+
+    @Override
+    public byte[] downloadMealPhotoBytes(long userId, long fileId) {
+        Optional<FileAssetEntity> mine = fileAssetRepository.findByIdAndUserId(fileId, userId);
+        if (mine.isEmpty()) {
+            if (fileAssetRepository.existsById(fileId)) {
+                throw new FileBusinessException(FileErrorCode.FILE_ACCESS_DENIED);
+            }
+            throw new FileBusinessException(FileErrorCode.FILE_NOT_FOUND);
+        }
+        FileAssetEntity file = mine.get();
+        if (!"uploaded".equals(file.getStatus()) || file.getDeletedAt() != null) {
+            throw new FileBusinessException(FileErrorCode.FILE_NOT_FOUND);
+        }
+        if (!"meal_photo".equals(file.getBizType())) {
+            throw new FileBusinessException(FileErrorCode.FILE_TYPE_NOT_ALLOWED);
+        }
+        if (!ossProperties.isEnabled() || ossClient == null) {
+            throw new FileBusinessException(FileErrorCode.OSS_NOT_CONFIGURED);
+        }
+        String bucket = file.getBucket();
+        String objectKey = file.getObjectKey();
+        if (!StringUtils.hasText(bucket) || !StringUtils.hasText(objectKey)) {
+            throw new FileBusinessException(FileErrorCode.OSS_UPLOAD_FAILED);
+        }
+        try (InputStream in = ossClient.getObject(bucket, objectKey).getObjectContent();
+                ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            in.transferTo(out);
+            return out.toByteArray();
+        } catch (OSSException | ClientException e) {
+            log.warn("OSS getObject failed: userId={}, fileId={}, key={}", userId, fileId, objectKey, e);
+            throw new FileBusinessException(FileErrorCode.OSS_UPLOAD_FAILED);
+        } catch (IOException e) {
+            log.warn("read OSS object failed: userId={}, fileId={}", userId, fileId, e);
+            throw new FileBusinessException(FileErrorCode.OSS_UPLOAD_FAILED);
+        }
     }
 
     private static String normalizeContentType(String raw) {

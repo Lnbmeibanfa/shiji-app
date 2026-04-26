@@ -11,6 +11,7 @@ import 'storage/secure_storage_facade.dart';
 import '../features/auth/repositories/auth_repository.dart';
 import '../features/camera/repositories/meal_photo_repository.dart';
 import '../features/record_meal/repositories/food_item_repository.dart';
+import '../features/record_meal/repositories/meal_photo_recognition_repository.dart';
 import '../features/record_meal/repositories/meal_record_repository.dart';
 
 final secureStorageProvider = Provider<SecureStorageFacade>((ref) {
@@ -37,6 +38,11 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 final mealPhotoRepositoryProvider = Provider<MealPhotoRepository>((ref) {
   return MealPhotoRepository(ref.watch(apiClientProvider));
+});
+
+final mealPhotoRecognitionRepositoryProvider =
+    Provider<MealPhotoRecognitionRepository>((ref) {
+  return MealPhotoRecognitionRepository(ref.watch(apiClientProvider));
 });
 
 final mealRecordRepositoryProvider = Provider<MealRecordRepository>((ref) {

@@ -60,4 +60,35 @@ class DraftFoodItem {
       fromAi: true,
     );
   }
+
+  /// 异步视觉识别返回的食材 ID（名称暂用占位，热量未知时可后续搜索替换）。
+  factory DraftFoodItem.aiFromIngredientId(int foodItemId) {
+    return DraftFoodItem(
+      name: '食物 #$foodItemId',
+      foodItemId: foodItemId,
+      kcalPer100g: null,
+      weightG: 100,
+      recognitionSource: 'ai',
+      fromAi: true,
+    );
+  }
+
+  /// 使用视觉接口返回的展示字段构建草稿行（优先 `foodName` / `caloriesPer100g`）。
+  factory DraftFoodItem.aiFromVision({
+    required int foodItemId,
+    required String foodName,
+    double? caloriesPer100g,
+    double weightG = 100,
+  }) {
+    final name =
+        foodName.trim().isNotEmpty ? foodName.trim() : '食物 #$foodItemId';
+    return DraftFoodItem(
+      name: name,
+      foodItemId: foodItemId,
+      kcalPer100g: caloriesPer100g,
+      weightG: weightG,
+      recognitionSource: 'ai',
+      fromAi: true,
+    );
+  }
 }

@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface FoodItemRepository extends JpaRepository<FoodItemEntity, Long> {
 
+    java.util.List<FoodItemEntity> findAllByEdibleStatus(Integer edibleStatus);
+
     @Query(
             value =
                     "SELECT fi.id, fi.food_name, fn.calories FROM food_item fi "

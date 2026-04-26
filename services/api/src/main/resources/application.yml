@@ -15,6 +15,28 @@ spring:
       port: 6379
       timeout: 3000
 
+# 阿里云 DashScope（百炼）文本模型。API Key 仅通过环境变量注入，勿提交真实值。
+# 未设置时连通性接口返回业务错误码，应用仍可启动（便于 CI）。
+dashscope:
+  api-key: ${DASHSCOPE_API_KEY:}
+  text-model: qwen-turbo
+  connect-timeout: 15s
+  read-timeout: 120s
+  vision:
+    model: qwen3.6-flash
+    confidence-threshold: 0.7
+    max-edge: 1440
+    jpeg-quality: 0.92
+    timeout: 45s
+
+# 餐图异步识别任务（与上传解耦，由前端创建任务后轮询）
+recognition:
+  task:
+    timeout-seconds: 60
+    retention-days: 7
+    scan-delay-ms: 30000
+    cleanup-cron: "0 0 3 * * ?"
+
 # 阿里云 OSS（后端代理上传）。密钥请用环境变量注入，勿提交真实值。
 # 本地未配置时可保持 enabled=false，上传接口将返回「对象存储未配置」。
 shiji:

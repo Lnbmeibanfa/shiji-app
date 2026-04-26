@@ -18,3 +18,19 @@ spring:
 shiji:
   oss:
     enabled: false
+
+# DashScope：测试环境不配置密钥，由用例 Mock 客户端；勿依赖本机环境变量。
+recognition:
+  task:
+    timeout-seconds: 3
+    retention-days: 7
+
+dashscope:
+  api-key: ""
+  text-model: qwen-turbo
+  vision:
+    model: qwen3.6-flash
+    confidence-threshold: 0.7
+    max-edge: 1440
+    jpeg-quality: 0.92
+    timeout: 10s

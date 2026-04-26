@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface DishRepository extends JpaRepository<DishEntity, Long> {
 
     boolean existsByIdAndEdibleStatus(Long id, Integer edibleStatus);
+
+    java.util.List<DishEntity> findAllByEdibleStatus(Integer edibleStatus);
 }
