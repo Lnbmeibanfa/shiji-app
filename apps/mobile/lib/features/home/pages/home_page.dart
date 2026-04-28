@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/network/models/latest_meal_record_response.dart';
+import '../../../core/providers.dart';
 import '../../../core/routing/route_paths.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -12,7 +15,7 @@ import '../../../core/widgets/meal_record_card.dart';
 import '../../../core/widgets/section_title.dart';
 
 /// 首页：问候、拍照入口、热量摘要、最近记录、AI 提示（数据 mock，拍照留扩展点）。
-class HomePage extends StatelessWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key, this.now});
 
   /// 注入固定时间便于测试；为 null 时使用 [DateTime.now]。
@@ -25,8 +28,9 @@ class HomePage extends StatelessWidget {
   static const _mockGoal = 1600;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final d = now ?? DateTime.now();
+    final latestMeal = ref.watch(_latestMealProvider);
 
     return ColoredBox(
       color: AppColors.bgPrimary,
@@ -66,19 +70,12 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
               ),
-              MealRecordCard(
-                title: '早餐 08:30',
-                subtitle: '520 kcal\n营养均衡，能量充足',
-                image: ColoredBox(
-                  color: AppColors.primarySoft,
-                  child: Center(
-                    child: Icon(
-                      Icons.restaurant_outlined,
-                      color: AppColors.primary.withValues(alpha: 0.6),
-                      size: 40,
-                    ),
-                  ),
-                ),
+              latestMeal.when(
+                loading: _buildLatestMealLoading,
+                error: (error, stackTrace) => _buildLatestMealError(),
+                data: (data) => data == null
+                    ? _buildLatestMealEmpty(context)
+                    : _buildLatestMealCard(data),
               ),
               const SizedBox(height: AppSpacing.s24),
               AIInsightCard(
@@ -88,6 +85,49 @@ class HomePage extends StatelessWidget {
                 icon: Icons.auto_awesome_outlined,
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static MealRecordCard _buildLatestMealLoading() {
+    return _baseCard(title: '最近一餐加载中', subtitle: '请稍候...');
+  }
+
+  static MealRecordCard _buildLatestMealError() {
+    return _baseCard(title: '最近一餐', subtitle: '加载失败，稍后再试');
+  }
+
+  static Widget _buildLatestMealEmpty(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push(RoutePaths.recordMeal),
+      child: _baseCard(title: '还没有记录', subtitle: '去记录一餐'),
+    );
+  }
+
+  static MealRecordCard _buildLatestMealCard(LatestMealRecordResponse data) {
+    final mealType = _mealTypeLabel(data.mealType);
+    final time = _formatHm(data.recordedAt);
+    final kcal = data.totalEstimatedCalories?.round();
+    final kcalText = kcal == null ? '-- kcal' : '$kcal kcal';
+    return _baseCard(title: '$mealType $time', subtitle: kcalText);
+  }
+
+  static MealRecordCard _baseCard({
+    required String title,
+    required String subtitle,
+  }) {
+    return MealRecordCard(
+      title: title,
+      subtitle: subtitle,
+      image: ColoredBox(
+        color: AppColors.primarySoft,
+        child: Center(
+          child: Icon(
+            Icons.restaurant_outlined,
+            color: AppColors.primary.withValues(alpha: 0.6),
+            size: 40,
           ),
         ),
       ),
@@ -111,7 +151,28 @@ class HomePage extends StatelessWidget {
     final shell = StatefulNavigationShell.maybeOf(context);
     shell?.goBranch(1);
   }
+
+  static String _formatHm(DateTime t) {
+    final hh = t.hour.toString().padLeft(2, '0');
+    final mm = t.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  static String _mealTypeLabel(String mealType) {
+    return switch (mealType) {
+      'breakfast' => '早餐',
+      'lunch' => '午餐',
+      'dinner' => '晚餐',
+      'snack' => '加餐',
+      'extra_meal' => '额外一餐',
+      _ => '一餐',
+    };
+  }
 }
+
+final _latestMealProvider = FutureProvider<LatestMealRecordResponse?>((ref) {
+  return ref.watch(homeRepositoryProvider).getLatestMeal();
+});
 
 class _HomeGreeting extends StatelessWidget {
   const _HomeGreeting({

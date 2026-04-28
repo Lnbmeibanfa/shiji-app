@@ -10,6 +10,7 @@ import com.shiji.api.modules.meal.model.dto.request.MealFoodItemRequest;
 import com.shiji.api.modules.meal.model.dto.request.MealRecognitionItemPersistRequest;
 import com.shiji.api.modules.meal.model.dto.request.MealRecognitionPersistRequest;
 import com.shiji.api.modules.meal.model.dto.response.CreateMealRecordResponse;
+import com.shiji.api.modules.meal.model.dto.response.LatestMealRecordResponse;
 import com.shiji.api.modules.meal.model.entity.DishFoodItemRelEntity;
 import com.shiji.api.modules.meal.model.entity.EmotionTagEntity;
 import com.shiji.api.modules.meal.model.entity.FoodItemEntity;
@@ -189,6 +190,26 @@ public class MealRecordServiceImpl implements MealRecordService {
         }
 
         return CreateMealRecordResponse.builder().mealRecordId(mealId).build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LatestMealRecordResponse getLatestMeal(long userId) {
+        Optional<MealRecordEntity> latest = mealRecordRepository
+                .findFirstByUserIdAndDeletedAtIsNullAndVisibilityStatusAndRecordedAtLessThanEqualOrderByRecordedAtDescIdDesc(
+                        userId, 1, LocalDateTime.now());
+        if (latest.isEmpty()) {
+            return null;
+        }
+        MealRecordEntity meal = latest.get();
+        LatestMealRecordResponse.Mood mood = resolveMood(meal.getPrimaryEmotionCode());
+        return LatestMealRecordResponse.builder()
+                .mealRecordId(meal.getId())
+                .mealType(meal.getMealType())
+                .recordedAt(meal.getRecordedAt())
+                .totalEstimatedCalories(meal.getTotalEstimatedCalories())
+                .mood(mood)
+                .build();
     }
 
     private void assertDishUsable(long dishId) {
@@ -389,5 +410,21 @@ public class MealRecordServiceImpl implements MealRecordService {
             }
         }
         return sum;
+    }
+
+    private LatestMealRecordResponse.Mood resolveMood(String primaryEmotionCode) {
+        if (!StringUtils.hasText(primaryEmotionCode)) {
+            return null;
+        }
+        Optional<EmotionTagEntity> emotion =
+                emotionTagRepository.findFirstByEmotionCodeAndEmotionStatusOrderByIdAsc(primaryEmotionCode, 1);
+        if (emotion.isEmpty()) {
+            return null;
+        }
+        EmotionTagEntity tag = emotion.get();
+        return LatestMealRecordResponse.Mood.builder()
+                .emotionCode(tag.getEmotionCode())
+                .emotionName(tag.getEmotionName())
+                .build();
     }
 }

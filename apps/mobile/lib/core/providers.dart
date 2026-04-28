@@ -10,6 +10,7 @@ import 'storage/auth_storage.dart';
 import 'storage/secure_storage_facade.dart';
 import '../features/auth/repositories/auth_repository.dart';
 import '../features/camera/repositories/meal_photo_repository.dart';
+import '../features/home/repositories/home_repository.dart';
 import '../features/record_meal/repositories/food_item_repository.dart';
 import '../features/record_meal/repositories/meal_photo_recognition_repository.dart';
 import '../features/record_meal/repositories/meal_record_repository.dart';
@@ -47,6 +48,10 @@ final mealPhotoRecognitionRepositoryProvider =
 
 final mealRecordRepositoryProvider = Provider<MealRecordRepository>((ref) {
   return MealRecordRepository(ref.watch(apiClientProvider));
+});
+
+final homeRepositoryProvider = Provider<HomeRepository>((ref) {
+  return HomeRepository(ref.watch(apiClientProvider));
 });
 
 final foodItemRepositoryProvider = Provider<FoodItemRepository>((ref) {

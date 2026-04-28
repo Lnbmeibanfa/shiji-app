@@ -1,6 +1,8 @@
 package com.shiji.api.modules.meal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,6 +26,7 @@ import com.shiji.api.modules.meal.model.entity.DishFoodItemRelEntity;
 import com.shiji.api.modules.meal.model.entity.EmotionTagEntity;
 import com.shiji.api.modules.meal.model.entity.FoodItemEntity;
 import com.shiji.api.modules.meal.model.entity.FoodNutritionEntity;
+import com.shiji.api.modules.meal.model.entity.MealRecordEntity;
 import com.shiji.api.modules.meal.repository.DishFoodItemRelRepository;
 import com.shiji.api.modules.meal.repository.DishRepository;
 import com.shiji.api.modules.meal.repository.EmotionTagRepository;
@@ -125,6 +128,54 @@ class MealRecordIntegrationTest {
                                 .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
+    }
+
+    @Test
+    void latestMeal_requiresAuth() throws Exception {
+        mockMvc.perform(get("/api/meal-records/latest"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(AuthErrorCode.UNAUTHORIZED.getCode()));
+    }
+
+    @Test
+    void latestMeal_returnsNullWhenNoRecords() throws Exception {
+        String token = loginAndGetToken();
+        mockMvc.perform(get("/api/meal-records/latest").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data").value(nullValue()));
+    }
+
+    @Test
+    void latestMeal_filtersFutureRecordAndReturnsLatestPast() throws Exception {
+        String token = loginAndGetToken();
+        long userId = userIdFromLastLogin();
+
+        seedMealRecord(userId, "breakfast", LocalDateTime.now().minusHours(2), "past_old", new BigDecimal("300"));
+        seedMealRecord(userId, "lunch", LocalDateTime.now().minusMinutes(15), "past_new", new BigDecimal("520"));
+        seedMealRecord(userId, "dinner", LocalDateTime.now().plusHours(3), "future", new BigDecimal("800"));
+
+        mockMvc.perform(get("/api/meal-records/latest").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.mealType").value("lunch"))
+                .andExpect(jsonPath("$.data.totalEstimatedCalories").value(520))
+                .andExpect(jsonPath("$.data.mood.emotionCode").value("past_new"))
+                .andExpect(jsonPath("$.data.mood.emotionName").value("情绪past_new"));
+    }
+
+    @Test
+    void latestMeal_moodPresentAndMissingHandled() throws Exception {
+        String token = loginAndGetToken();
+        long userId = userIdFromLastLogin();
+        seedMealRecord(userId, "lunch", LocalDateTime.now().minusHours(3), "mood_ok", new BigDecimal("430"));
+        seedMealRecord(userId, "dinner", LocalDateTime.now().minusMinutes(5), null, new BigDecimal("600"));
+
+        mockMvc.perform(get("/api/meal-records/latest").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.mealType").value("dinner"))
+                .andExpect(jsonPath("$.data.mood").value(nullValue()));
     }
 
     @Test
@@ -437,6 +488,28 @@ class MealRecordIntegrationTest {
         t.setCreatedAt(now);
         t.setUpdatedAt(now);
         return emotionTagRepository.save(t);
+    }
+
+    private MealRecordEntity seedMealRecord(
+            long userId, String mealType, LocalDateTime recordedAt, String emotionCode, BigDecimal totalKcal) {
+        if (emotionCode != null) {
+            seedEmotion(emotionCode, "情绪" + emotionCode, 1);
+        }
+        MealRecordEntity meal = new MealRecordEntity();
+        meal.setUserId(userId);
+        meal.setMealType(mealType);
+        meal.setRecordedAt(recordedAt);
+        meal.setRecordDate(recordedAt.toLocalDate());
+        meal.setPrimaryEmotionCode(emotionCode);
+        meal.setRecordMethod("manual");
+        meal.setCompletionStatus("completed");
+        meal.setRecognitionStatus("skipped");
+        meal.setTotalEstimatedCalories(totalKcal);
+        meal.setVisibilityStatus(1);
+        meal.setDeletedAt(null);
+        meal.setCreatedAt(LocalDateTime.now());
+        meal.setUpdatedAt(LocalDateTime.now());
+        return mealRecordRepository.save(meal);
     }
 
     private DishEntity seedDish(String code, String name) {
